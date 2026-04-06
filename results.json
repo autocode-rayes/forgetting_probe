@@ -1,0 +1,51 @@
+{
+  "math\u2192code": {
+    "domain_a": "math",
+    "domain_b": "code",
+    "ppl_before": 1.8832,
+    "ppl_after": 2.0205,
+    "forgetting_pct": 7.2892
+  },
+  "math\u2192literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 1.8819,
+    "ppl_after": 2.3241,
+    "forgetting_pct": 23.495
+  },
+  "code\u2192math": {
+    "domain_a": "code",
+    "domain_b": "math",
+    "ppl_before": 8.0331,
+    "ppl_after": 8.3438,
+    "forgetting_pct": 3.8683
+  },
+  "code\u2192literature": {
+    "domain_a": "code",
+    "domain_b": "literature",
+    "ppl_before": 8.0415,
+    "ppl_after": 8.6568,
+    "forgetting_pct": 7.6519
+  },
+  "literature\u2192math": {
+    "domain_a": "literature",
+    "domain_b": "math",
+    "ppl_before": 19.5511,
+    "ppl_after": 21.2599,
+    "forgetting_pct": 8.7398
+  },
+  "literature\u2192code": {
+    "domain_a": "literature",
+    "domain_b": "code",
+    "ppl_before": 19.506,
+    "ppl_after": 21.1057,
+    "forgetting_pct": 8.2011
+  },
+  "_summary": {
+    "min_pair": "code\u2192math",
+    "max_pair": "math\u2192literature",
+    "spread_pct": 19.6267,
+    "verdict": "REAL signal \u2014 >10pp spread; parametric structure meaningfully drives forgetting magnitude.",
+    "elapsed_min": 15.0
+  }
+}

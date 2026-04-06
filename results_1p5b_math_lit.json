@@ -1,0 +1,18 @@
+{
+  "math->literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 3.6355,
+    "ppl_after": 7.926,
+    "forgetting_pct": 118.0147
+  },
+  "_summary": {
+    "model": "/root/autodl-tmp/Qwen2.5-1.5B",
+    "n_gpus": 4,
+    "batch_per_gpu": 4,
+    "effective_batch": 16,
+    "steps": 200,
+    "lr": 2e-05,
+    "elapsed_min": 2.4
+  }
+}

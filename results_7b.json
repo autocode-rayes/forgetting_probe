@@ -1,0 +1,53 @@
+{
+  "math->code": {
+    "domain_a": "math",
+    "domain_b": "code",
+    "ppl_before": 31.274,
+    "ppl_after": 32.6935,
+    "forgetting_pct": 4.539
+  },
+  "math->literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 31.4806,
+    "ppl_after": 22.2776,
+    "forgetting_pct": -29.2338
+  },
+  "code->math": {
+    "domain_a": "code",
+    "domain_b": "math",
+    "ppl_before": 8.4398,
+    "ppl_after": 9.405,
+    "forgetting_pct": 11.4364
+  },
+  "code->literature": {
+    "domain_a": "code",
+    "domain_b": "literature",
+    "ppl_before": 7.8358,
+    "ppl_after": 8.8913,
+    "forgetting_pct": 13.4706
+  },
+  "literature->math": {
+    "domain_a": "literature",
+    "domain_b": "math",
+    "ppl_before": 24.184,
+    "ppl_after": 18.4136,
+    "forgetting_pct": -23.8601
+  },
+  "literature->code": {
+    "domain_a": "literature",
+    "domain_b": "code",
+    "ppl_before": 23.173,
+    "ppl_after": 24.4642,
+    "forgetting_pct": 5.5719
+  },
+  "_summary": {
+    "model": "/root/autodl-tmp/Qwen2.5-7B",
+    "n_gpus": 4,
+    "spread_pct": 42.7044,
+    "min_pair": "math->literature",
+    "max_pair": "code->literature",
+    "verdict": "REAL >10pp",
+    "elapsed_min": 17.1
+  }
+}

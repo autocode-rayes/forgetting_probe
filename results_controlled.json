@@ -1,0 +1,44 @@
+{
+  "math\u2192code": {
+    "domain_a": "math",
+    "domain_b": "code",
+    "ppl_before": 2.8351,
+    "ppl_after": 5.3018,
+    "forgetting_pct": 87.0058
+  },
+  "math\u2192literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 3.0128,
+    "ppl_after": 6.0548,
+    "forgetting_pct": 100.9715
+  },
+  "code\u2192math": {
+    "domain_a": "code",
+    "domain_b": "math",
+    "ppl_before": 19.552,
+    "ppl_after": 18.3698,
+    "forgetting_pct": -6.0461
+  },
+  "code\u2192literature": {
+    "domain_a": "code",
+    "domain_b": "literature",
+    "ppl_before": 18.3307,
+    "ppl_after": 28.1306,
+    "forgetting_pct": 53.4616
+  },
+  "literature\u2192math": {
+    "domain_a": "literature",
+    "domain_b": "math",
+    "ppl_before": 39.5014,
+    "ppl_after": 39.1254,
+    "forgetting_pct": -0.9518
+  },
+  "literature\u2192code": {
+    "domain_a": "literature",
+    "domain_b": "code",
+    "ppl_before": 27.6681,
+    "ppl_after": 57.9074,
+    "forgetting_pct": 109.2925
+  }
+}

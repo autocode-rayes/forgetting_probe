@@ -1,0 +1,52 @@
+{
+  "batch_1": {
+    "batch_size": 1,
+    "epochs": 1.14,
+    "ppl_before": 1.578,
+    "ppl_after": 1.6256,
+    "forgetting_pct": 3.0165,
+    "abs_gap": 0.0476,
+    "optimizer": "AdamW_fp32",
+    "elapsed_min": 3.0
+  },
+  "batch_2": {
+    "batch_size": 2,
+    "epochs": 2.3,
+    "ppl_before": 1.6465,
+    "ppl_after": 1.7399,
+    "forgetting_pct": 5.6731,
+    "abs_gap": 0.0934,
+    "optimizer": "AdamW_fp32",
+    "elapsed_min": 3.1
+  },
+  "batch_4": {
+    "batch_size": 4,
+    "epochs": 4.65,
+    "ppl_before": 1.825,
+    "ppl_after": 1.9159,
+    "forgetting_pct": 4.9814,
+    "abs_gap": 0.0909,
+    "optimizer": "AdamW_fp32",
+    "elapsed_min": 3.8
+  },
+  "batch_8": {
+    "batch_size": 8,
+    "epochs": 9.52,
+    "ppl_before": 2.0623,
+    "ppl_after": 2.1668,
+    "forgetting_pct": 5.0661,
+    "abs_gap": 0.1045,
+    "optimizer": "AdamW_fp32",
+    "elapsed_min": 5.7
+  },
+  "batch_16": {
+    "batch_size": 16,
+    "epochs": 20.0,
+    "ppl_before": 2.1694,
+    "ppl_after": 2.202,
+    "forgetting_pct": 1.5012,
+    "abs_gap": 0.0326,
+    "optimizer": "AdamW_fp32",
+    "elapsed_min": 9.8
+  }
+}

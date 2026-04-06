@@ -1,0 +1,27 @@
+{
+  "math->literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 2.3422,
+    "ppl_after": 3.572,
+    "forgetting_pct": 52.5063
+  },
+  "_config": {
+    "model": "Qwen/Qwen2.5-0.5B",
+    "size": "0.5B",
+    "batch": 4,
+    "steps": 200,
+    "lr": 2e-05,
+    "optimizer": "AdamW_fp32",
+    "grad_checkpointing": false,
+    "token_budget": 50000,
+    "max_len": 256,
+    "train_chunks": 175,
+    "eval_chunks": 19,
+    "train_tokens": 44800,
+    "eval_tokens": 4864,
+    "batches_per_epoch": 43,
+    "epochs": 4.65,
+    "elapsed_min": 0.6
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "math->code": {
+    "domain_a": "math",
+    "domain_b": "code",
+    "ppl_before": 227.6693,
+    "ppl_after": 1388.5255,
+    "forgetting_pct": 509.887
+  },
+  "math->literature": {
+    "domain_a": "math",
+    "domain_b": "literature",
+    "ppl_before": 289.6727,
+    "ppl_after": 374.1445,
+    "forgetting_pct": 29.1611
+  },
+  "code->math": {
+    "domain_a": "code",
+    "domain_b": "math",
+    "ppl_before": 59.7694,
+    "ppl_after": 92.5827,
+    "forgetting_pct": 54.8999
+  },
+  "code->literature": {
+    "domain_a": "code",
+    "domain_b": "literature",
+    "ppl_before": 62.6891,
+    "ppl_after": 93.9025,
+    "forgetting_pct": 49.7907
+  },
+  "literature->math": {
+    "domain_a": "literature",
+    "domain_b": "math",
+    "ppl_before": 202.5783,
+    "ppl_after": 234.3223,
+    "forgetting_pct": 15.67
+  },
+  "literature->code": {
+    "domain_a": "literature",
+    "domain_b": "code",
+    "ppl_before": 234.6242,
+    "ppl_after": 1152.8727,
+    "forgetting_pct": 391.37
+  },
+  "_summary": {
+    "model": "Qwen/Qwen2.5-3B",
+    "spread_pct": 494.217,
+    "min_pair": "literature->math",
+    "max_pair": "math->code",
+    "verdict": "REAL >10pp",
+    "elapsed_min": 26.3
+  }
+}
