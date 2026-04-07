@@ -39,22 +39,27 @@ def _resolve_model_path(model_id, local_path):
               ignore_patterns=["*.msgpack", "*.h5", "flax*"])
         return local_path
 
-TOKEN_BUDGET = 50_000
-MAX_LEN      = 256
-TRAIN_N      = 175
-EVAL_N       = 19
-STEPS        = 200
-LR           = 2e-5
-SEED         = 42
-DTYPE        = torch.bfloat16
-OUT_DIR      = "/root/autodl-tmp"
-OUT          = f"{OUT_DIR}/results_batchscale_2d.json"
+TOKEN_BUDGET   = 50_000
+MAX_LEN        = 256
+TRAIN_N        = 175
+EVAL_N         = 19
+STEPS          = 200
+LR             = 2e-5
+SEED           = 42
+DTYPE          = torch.bfloat16
+OUT_DIR        = os.environ.get("OUT_DIR", "/root/autodl-tmp")
+MODEL_FILTER   = os.environ.get("MODEL_FILTER")   # e.g. "7B" to run only 7B
+USE_FA2        = os.environ.get("USE_FA2", "1") != "0"
 
-MODELS = [
+ALL_MODELS = [
     ("0.5B", "Qwen/Qwen2.5-0.5B", f"{OUT_DIR}/Qwen2.5-0.5B"),
     ("1.5B", "Qwen/Qwen2.5-1.5B", f"{OUT_DIR}/Qwen2.5-1.5B"),
     ("3B",   "Qwen/Qwen2.5-3B",   f"{OUT_DIR}/Qwen2.5-3B"),
+    ("7B",   "Qwen/Qwen2.5-7B",   f"{OUT_DIR}/Qwen2.5-7B"),
 ]
+MODELS = [m for m in ALL_MODELS if not MODEL_FILTER or m[0] == MODEL_FILTER]
+
+OUT = f"{OUT_DIR}/results_batchscale_{MODEL_FILTER or '2d'}.json"
 
 BATCH_SIZES = [32, 64]
 
@@ -160,12 +165,21 @@ print(f"  math train: {len(math_train)}  eval: {len(math_eval)}  lit train: {len
 
 # ── Main sweep ────────────────────────────────────────────────────────────────
 
+# Load cached results if available (resume support)
 all_results = {}
+if os.path.isfile(OUT):
+    with open(OUT) as f:
+        all_results = json.load(f)
+    print(f"Loaded cached results for: {list(all_results.keys())}", flush=True)
 
 for size, hf_id, local_path in MODELS:
     print(f"\n{'#'*60}", flush=True)
     print(f"  MODEL: {size}  ({hf_id})", flush=True)
     print(f"{'#'*60}", flush=True)
+
+    if size in all_results:
+        print(f"  Skipping {size} (cached)", flush=True)
+        continue
 
     local_path = ensure_model(hf_id, local_path)
     model_results = {}
@@ -181,16 +195,17 @@ for size, hf_id, local_path in MODELS:
             random.seed(SEED)
             ta = make_batches(math_train, bs, shuffle=True)
             tb = make_batches(lit_train, bs, shuffle=True)
-            ea = make_batches(math_eval, bs, shuffle=False)
+            ea = make_batches(math_eval, 1, shuffle=False)
 
-            if size in ("0.5B", "1.5B"):
+            fa2_kwargs = {"attn_implementation": "flash_attention_2"} if USE_FA2 else {}
+            if size == "0.5B":
                 model = AutoModelForCausalLM.from_pretrained(
-                    local_path, dtype=DTYPE)
+                    local_path, dtype=DTYPE, **fa2_kwargs)
                 model = model.to("cuda:0")
                 input_dev = torch.device("cuda:0")
             else:
                 model = AutoModelForCausalLM.from_pretrained(
-                    local_path, dtype=DTYPE, device_map="balanced")
+                    local_path, dtype=DTYPE, device_map="balanced", **fa2_kwargs)
                 input_dev = torch.device("cuda:0")
 
             model.config.pad_token_id = tok.eos_token_id
