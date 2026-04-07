@@ -184,7 +184,7 @@ for size, hf_id, local_path, BATCH_SIZES in MODELS:
             random.seed(SEED)
             ta = make_batches(math_train, bs, shuffle=True)
             tb = make_batches(lit_train, bs, shuffle=True)
-            ea = make_batches(math_eval, bs, shuffle=False)
+            ea = make_batches(math_eval, 1, shuffle=False)
 
             model = AutoModelForCausalLM.from_pretrained(
                 local_path, dtype=DTYPE, device_map="balanced")
