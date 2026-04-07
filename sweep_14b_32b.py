@@ -176,8 +176,11 @@ for size, hf_id, local_path in MODELS:
             model = AutoModelForCausalLM.from_pretrained(
                 local_path, dtype=DTYPE, device_map="balanced")
             model.config.pad_token_id = tok.eos_token_id
-            # NO gradient checkpointing — match protocol
-            print(f"  loaded  [{vram()}]", flush=True)
+            try:
+                model = torch.compile(model)
+                print(f"  torch.compile OK  [{vram()}]", flush=True)
+            except Exception as ce:
+                print(f"  torch.compile skipped: {ce}  [{vram()}]", flush=True)
 
             t0 = time.time()
             torch.manual_seed(SEED)
