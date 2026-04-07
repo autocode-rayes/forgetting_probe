@@ -1,5 +1,3 @@
-The accompanying paper is licensed under CC BY 4.0.
-Code: This repository is licensed under MIT.
 # Forgetting as Probe: The Geometry of Catastrophic Forgetting
 
 **The Geometry of Catastrophic Forgetting: Scale and Batch Size Reveal a Two-Dimensional Behavioral Shift in Language Models**
