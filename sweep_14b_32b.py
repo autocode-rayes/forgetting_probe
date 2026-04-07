@@ -46,18 +46,22 @@ STEPS        = 200
 LR           = 2e-5
 SEED         = 42
 DTYPE        = torch.bfloat16
-OUT_DIR      = "/root/autodl-tmp"
+OUT_DIR      = os.environ.get("OUT_DIR", "/root/autodl-tmp")
+MODEL_FILTER = os.environ.get("MODEL_FILTER")   # e.g. "14B"
+USE_FA2      = os.environ.get("USE_FA2", "1") != "0"
 N_GPUS       = torch.cuda.device_count()
 
 BATCH_SIZES_NEW_SCALE = [1, 2, 4, 8, 16, 32, 64]  # 32B, 72B: full sweep
 BATCH_SIZES_EXTEND    = [32, 64]                   # 14B: already have 1-16
 
-MODELS = [
-    ("7B",  "Qwen/Qwen2.5-7B",  f"{OUT_DIR}/Qwen2.5-7B",  BATCH_SIZES_EXTEND),
+ALL_MODELS = [
     ("14B", "Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B", BATCH_SIZES_EXTEND),
     ("32B", "Qwen/Qwen2.5-32B", f"{OUT_DIR}/Qwen2.5-32B", BATCH_SIZES_NEW_SCALE),
     ("72B", "Qwen/Qwen2.5-72B", f"{OUT_DIR}/Qwen2.5-72B", BATCH_SIZES_NEW_SCALE),
 ]
+MODELS = [m for m in ALL_MODELS if not MODEL_FILTER or m[0] == MODEL_FILTER]
+
+OUT = f"{OUT_DIR}/results_sweep_{MODEL_FILTER or 'all'}.json"
 
 print(f"GPUs: {N_GPUS}", flush=True)
 for i in range(N_GPUS):
@@ -186,8 +190,9 @@ for size, hf_id, local_path, BATCH_SIZES in MODELS:
             tb = make_batches(lit_train, bs, shuffle=True)
             ea = make_batches(math_eval, 1, shuffle=False)
 
+            fa2_kwargs = {"attn_implementation": "flash_attention_2"} if USE_FA2 else {}
             model = AutoModelForCausalLM.from_pretrained(
-                local_path, dtype=DTYPE, device_map="balanced")
+                local_path, dtype=DTYPE, device_map="balanced", **fa2_kwargs)
             model.config.pad_token_id = tok.eos_token_id
             try:
                 model = torch.compile(model)
