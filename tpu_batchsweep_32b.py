@@ -105,25 +105,10 @@ def apply_sharding(model):
     print(f"  Sharded {sharded} matrices across {num_chips} chips", flush=True)
 
 
-def _resolve_model_path(model_id):
-    """Download via ModelScope (faster, no firewall) and return local path.
-    Falls back to the HuggingFace model ID if modelscope is not installed."""
-    try:
-        from modelscope import snapshot_download
-        ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
-        print(f"  Downloading {ms_id} via ModelScope...", flush=True)
-        path = snapshot_download(ms_id)
-        print(f"  ModelScope path: {path}", flush=True)
-        return path
-    except Exception as e:
-        print(f"  ModelScope unavailable ({e}), using HF hub", flush=True)
-        return model_id
-
-
 def load_model(model_id, tokenizer):
     print(f"  Loading {model_id} on CPU...", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
-        _resolve_model_path(model_id), torch_dtype=DTYPE, low_cpu_mem_usage=True)
+        model_id, torch_dtype=DTYPE, low_cpu_mem_usage=True)
     model.config.pad_token_id = tokenizer.eos_token_id
     model = model.to(DEVICE)
     apply_sharding(model)
@@ -210,7 +195,7 @@ def run_model(model_id, math_chunks, lit_chunks):
         print(f"  Resuming: {len(done)} batch sizes already done: {done}", flush=True)
 
     # Load tokenizer from the first model in the run (shared across Qwen2.5 family)
-    tokenizer = AutoTokenizer.from_pretrained(_resolve_model_path(model_id))
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -344,7 +329,7 @@ def main():
 
     # ── Data (shared across models — same Qwen2.5 tokenizer family) ──────────
     print("\nLoading tokenizer (Qwen2.5-32B)...", flush=True)
-    tokenizer = AutoTokenizer.from_pretrained(_resolve_model_path(MODEL_IDS[0]))
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_IDS[0])
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
