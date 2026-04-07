@@ -1,15 +1,31 @@
 import os, sys, json, math, random, time, shutil
 
-os.environ["HF_ENDPOINT"]            = "https://hf-mirror.com"
-os.environ["HF_HOME"]                = "/root/autodl-tmp/hf_cache"
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TORCHDYNAMO_DISABLE"]    = "1"
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
-from huggingface_hub import snapshot_download
+
+
+def _resolve_model_path(model_id, local_path):
+    if os.path.isdir(local_path) and any(
+            f.endswith(".safetensors") for f in os.listdir(local_path)):
+        print(f"  Model at {local_path}", flush=True)
+        return local_path
+    try:
+        from modelscope import snapshot_download
+        ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
+        print(f"  Downloading {ms_id} via ModelScope...", flush=True)
+        path = snapshot_download(ms_id, local_dir=local_path)
+        print(f"  Download complete -> {path}", flush=True)
+        return path
+    except Exception as e:
+        print(f"  ModelScope failed ({e}), trying HF hub...", flush=True)
+        from huggingface_hub import snapshot_download as hf_dl
+        hf_dl(model_id, local_dir=local_path,
+              ignore_patterns=["*.msgpack", "*.h5", "flax*"])
+        return local_path
 
 TOKEN_BUDGET = 50_000
 MAX_LEN      = 256
@@ -22,11 +38,12 @@ DTYPE        = torch.bfloat16
 OUT_DIR      = "/root/autodl-tmp"
 N_GPUS       = torch.cuda.device_count()
 
-BATCH_SIZES = [1, 2, 4, 8, 16]
+BATCH_SIZES = [1, 2, 4, 8, 16, 32, 64]
 
 MODELS = [
     ("14B", "Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B"),
     ("32B", "Qwen/Qwen2.5-32B", f"{OUT_DIR}/Qwen2.5-32B"),
+    ("72B", "Qwen/Qwen2.5-72B", f"{OUT_DIR}/Qwen2.5-72B"),
 ]
 
 print(f"GPUs: {N_GPUS}", flush=True)
@@ -41,15 +58,7 @@ def vram():
 
 
 def ensure_model(hf_id, local_path):
-    safetensors = [f for f in os.listdir(local_path)
-                   if f.endswith(".safetensors")] if os.path.isdir(local_path) else []
-    if safetensors:
-        print(f"  Model at {local_path} ({len(safetensors)} shards)", flush=True)
-        return
-    print(f"  Downloading {hf_id} ...", flush=True)
-    snapshot_download(hf_id, local_dir=local_path,
-                      ignore_patterns=["*.msgpack", "*.h5", "flax*"])
-    print(f"  Download complete", flush=True)
+    return _resolve_model_path(hf_id, local_path)
 
 
 def build_chunks(texts, tok):
@@ -110,9 +119,9 @@ def ppl(model, blist, input_dev):
 
 # ── Data prep ─────────────────────────────────────────────────────────────────
 
-# Download 14B first for tokenizer (all Qwen2.5 share same tokenizer)
-ensure_model("Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B")
-tok = AutoTokenizer.from_pretrained(f"{OUT_DIR}/Qwen2.5-14B", local_files_only=True)
+# Download smallest model first for tokenizer (all Qwen2.5 share same tokenizer)
+tok_path = ensure_model("Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B")
+tok = AutoTokenizer.from_pretrained(tok_path)
 if tok.pad_token is None:
     tok.pad_token = tok.eos_token
 
@@ -147,7 +156,7 @@ for size, hf_id, local_path in MODELS:
     print(f"  MODEL: {size}  ({hf_id})", flush=True)
     print(f"{'#'*60}", flush=True)
 
-    ensure_model(hf_id, local_path)
+    local_path = ensure_model(hf_id, local_path)
     results = {}
     input_dev = torch.device("cuda:0")
 
@@ -165,8 +174,7 @@ for size, hf_id, local_path in MODELS:
             ea = make_batches(math_eval, bs, shuffle=False)
 
             model = AutoModelForCausalLM.from_pretrained(
-                local_path, dtype=DTYPE, device_map="balanced",
-                local_files_only=True)
+                local_path, dtype=DTYPE, device_map="balanced")
             model.config.pad_token_id = tok.eos_token_id
             # NO gradient checkpointing — match protocol
             print(f"  loaded  [{vram()}]", flush=True)
@@ -244,7 +252,7 @@ for size, _, _ in MODELS:
     except FileNotFoundError:
         all_model_results[size] = {}
 
-for size in ["14B", "32B"]:
+for size in ["14B", "32B", "72B"]:
     row = f"{size:<7}"
     best_bs = None
     best_fg = -999
@@ -267,7 +275,7 @@ print(f"{'='*75}", flush=True)
 print(f"{'Scale':<7}" + "".join(f"{'bs='+str(b):>11}" for b in BATCH_SIZES), flush=True)
 print("-" * 75, flush=True)
 
-for size in ["14B", "32B"]:
+for size in ["14B", "32B", "72B"]:
     row = f"{size:<7}"
     for bs in BATCH_SIZES:
         key = f"batch_{bs}"
@@ -284,7 +292,7 @@ print(f"\n{'='*75}", flush=True)
 print("ANALYSIS", flush=True)
 print(f"{'='*75}", flush=True)
 
-for size in ["14B", "32B"]:
+for size in ["14B", "32B", "72B"]:
     best_bs = None
     best_fg = -999
     has_neg = []
