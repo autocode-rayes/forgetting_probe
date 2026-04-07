@@ -4,7 +4,7 @@
 
 *Yi Zhang — Independent Researcher*
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19446077.svg)](https://doi.org/10.5281/zenodo.19446077)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19446248.svg)](https://doi.org/10.5281/zenodo.19446248)
 
 ---
 
@@ -130,8 +130,8 @@ If you use this work, please cite:
   title={The Geometry of Catastrophic Forgetting: Scale and Batch Size Reveal a Two-Dimensional Behavioral Shift in Language Models},
   author={Zhang, Yi},
   year={2026},
-  doi={10.5281/zenodo.19446077},
-  url={https://doi.org/10.5281/zenodo.19446077}
+  doi={10.5281/zenodo.19446248},
+  url={https://doi.org/10.5281/zenodo.19446248}
 }
 ```
 
