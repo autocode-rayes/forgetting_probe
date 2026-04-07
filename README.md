@@ -24,7 +24,7 @@ Catastrophic forgetting — the degradation of previously learned knowledge duri
 | 1.5B  | 2.411     | 3.096     | +28.41%    |
 | 3B    | 2.123     | 2.536     | +19.45%    |
 | 7B    | 1.678     | 1.910     | +13.79%    |
-| 14B   | 1.578     | 1.657     | +4.98%     |
+| 14B   | 1.825     | 1.916     | +4.98%     |
 
 ### Full 2D Surface (math → literature, 200 steps)
 
