@@ -7,6 +7,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
 
 
+def _load_dataset_ms(name, subset=None, split="train"):
+    try:
+        from modelscope.msdatasets import MsDataset
+        kwargs = {"split": split}
+        if subset:
+            kwargs["subset_name"] = subset
+        print(f"  Loading dataset {name} via ModelScope...", flush=True)
+        return MsDataset.load(name, **kwargs)
+    except Exception as e:
+        print(f"  ModelScope dataset failed ({e}), trying HF...", flush=True)
+        return load_dataset(name, subset, split=split)
+
+
 def _resolve_model_path(model_id, local_path):
     if os.path.isdir(local_path) and any(
             f.endswith(".safetensors") for f in os.listdir(local_path)):
@@ -43,7 +56,7 @@ MODELS = [
     ("3B",   "Qwen/Qwen2.5-3B",   f"{OUT_DIR}/Qwen2.5-3B"),
 ]
 
-BATCH_SIZES = [1, 2, 4, 8, 16, 32, 64]
+BATCH_SIZES = [32, 64]
 
 # 7B results from previous sweep (to include in final table)
 PREV_7B = {
@@ -123,9 +136,9 @@ if tok.pad_token is None:
     tok.pad_token = tok.eos_token
 
 print("Loading datasets...", flush=True)
-ds_math = load_dataset("gsm8k", "main", split="train")
+ds_math = _load_dataset_ms("gsm8k", "main", split="train")
 math_texts = [f"Question: {r['question']}\nAnswer: {r['answer']}" for r in ds_math]
-ds_lit = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
+ds_lit = _load_dataset_ms("wikitext", "wikitext-103-raw-v1", split="train")
 lit_texts = [r["text"] for r in ds_lit if len(r["text"].strip()) > 80]
 print(f"  math: {len(math_texts)}  lit: {len(lit_texts)}", flush=True)
 
