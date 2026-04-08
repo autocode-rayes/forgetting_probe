@@ -1,10 +1,16 @@
 import os, sys
 os.environ["TOKENIZERS_PARALLELISM"]="false"
+os.environ["TORCHDYNAMO_DISABLE"]="1"
+os.environ["TORCHINDUCTOR_COMPILE_THREADS"]="1"
 import json,math,random,time
 from itertools import permutations
 import torch
 from transformers import AutoModelForCausalLM,AutoTokenizer
 from datasets import load_dataset
+try:
+    import torch._dynamo
+    torch._dynamo.config.disable=True
+except:pass
 MODEL_ID=os.environ.get("MODEL_ID","Qwen/Qwen2.5-32B")
 OUT_DIR="/root/autodl-tmp"
 TOKEN_BUDGET=50000;MAX_LEN=256;TRAIN_N=175;EVAL_N=19;STEPS=200;BATCH=4;LR=2e-5;SEED=42
@@ -106,11 +112,7 @@ for da,db in permutations(dom.keys(),2):
     try:
         model=AutoModelForCausalLM.from_pretrained(MODEL_PATH,dtype=DTYPE,device_map="balanced")
         model.config.pad_token_id=tok.eos_token_id
-        try:
-            model=torch.compile(model)
-            print(f"  torch.compile OK [{vram()}]",flush=True)
-        except Exception as ce:
-            print(f"  torch.compile skipped: {ce} [{vram()}]",flush=True)
+        print(f"  loaded [{vram()}]",flush=True)
         finetune(model,ta,f"A={da}")
         pb=ppl(model,ea);print(f"  ppl({da}) before: {pb:.3f}",flush=True)
         finetune(model,tb,f"B={db}")

@@ -1,30 +1,15 @@
 import os, sys, json, math, random, time, shutil
 
+os.environ["HF_ENDPOINT"]            = "https://hf-mirror.com"
+os.environ["HF_HOME"]                = "/root/autodl-tmp/hf_cache"
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TORCHDYNAMO_DISABLE"]    = "1"
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
-
-
-def _resolve_model_path(model_id, local_path):
-    if os.path.isdir(local_path) and any(
-            f.endswith(".safetensors") for f in os.listdir(local_path)):
-        print(f"  Model at {local_path}", flush=True)
-        return local_path
-    try:
-        from modelscope import snapshot_download
-        ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
-        print(f"  Downloading {ms_id} via ModelScope...", flush=True)
-        path = snapshot_download(ms_id, local_dir=local_path)
-        print(f"  Download complete -> {path}", flush=True)
-        return path
-    except Exception as e:
-        print(f"  ModelScope failed ({e}), trying HF hub...", flush=True)
-        from huggingface_hub import snapshot_download as hf_dl
-        hf_dl(model_id, local_dir=local_path,
-              ignore_patterns=["*.msgpack", "*.h5", "flax*"])
-        return local_path
+from huggingface_hub import snapshot_download
 
 TOKEN_BUDGET = 50_000
 MAX_LEN      = 256
@@ -43,7 +28,7 @@ MODELS = [
     ("3B",   "Qwen/Qwen2.5-3B",   f"{OUT_DIR}/Qwen2.5-3B"),
 ]
 
-BATCH_SIZES = [1, 2, 4, 8, 16, 32, 64]
+BATCH_SIZES = [1, 2, 4, 8, 16]
 
 # 7B results from previous sweep (to include in final table)
 PREV_7B = {
@@ -56,7 +41,15 @@ PREV_7B = {
 
 
 def ensure_model(hf_id, local_path):
-    return _resolve_model_path(hf_id, local_path)
+    safetensors = [f for f in os.listdir(local_path)
+                   if f.endswith(".safetensors")] if os.path.isdir(local_path) else []
+    if safetensors:
+        print(f"  Model at {local_path} ({len(safetensors)} shards)", flush=True)
+        return
+    print(f"  Downloading {hf_id} ...", flush=True)
+    snapshot_download(hf_id, local_dir=local_path,
+                      ignore_patterns=["*.msgpack", "*.h5", "flax*"])
+    print(f"  Download complete", flush=True)
 
 
 def build_chunks(texts, tok):
@@ -117,8 +110,8 @@ def ppl(model, blist, input_dev):
 # ── Data prep (once) ──────────────────────────────────────────────────────────
 
 # Download smallest model for tokenizer
-tok_path = ensure_model("Qwen/Qwen2.5-0.5B", f"{OUT_DIR}/Qwen2.5-0.5B")
-tok = AutoTokenizer.from_pretrained(tok_path)
+ensure_model("Qwen/Qwen2.5-0.5B", f"{OUT_DIR}/Qwen2.5-0.5B")
+tok = AutoTokenizer.from_pretrained(f"{OUT_DIR}/Qwen2.5-0.5B", local_files_only=True)
 if tok.pad_token is None:
     tok.pad_token = tok.eos_token
 
@@ -154,7 +147,7 @@ for size, hf_id, local_path in MODELS:
     print(f"  MODEL: {size}  ({hf_id})", flush=True)
     print(f"{'#'*60}", flush=True)
 
-    local_path = ensure_model(hf_id, local_path)
+    ensure_model(hf_id, local_path)
     model_results = {}
 
     for bs in BATCH_SIZES:
@@ -172,20 +165,16 @@ for size, hf_id, local_path in MODELS:
 
             if size in ("0.5B", "1.5B"):
                 model = AutoModelForCausalLM.from_pretrained(
-                    local_path, dtype=DTYPE)
+                    local_path, dtype=DTYPE, local_files_only=True)
                 model = model.to("cuda:0")
                 input_dev = torch.device("cuda:0")
             else:
                 model = AutoModelForCausalLM.from_pretrained(
-                    local_path, dtype=DTYPE, device_map="balanced")
+                    local_path, dtype=DTYPE, device_map="balanced",
+                    local_files_only=True)
                 input_dev = torch.device("cuda:0")
 
             model.config.pad_token_id = tok.eos_token_id
-            try:
-                model = torch.compile(model)
-                print(f"  torch.compile OK", flush=True)
-            except Exception as ce:
-                print(f"  torch.compile skipped: {ce}", flush=True)
             t0 = time.time()
             torch.manual_seed(SEED)
 
