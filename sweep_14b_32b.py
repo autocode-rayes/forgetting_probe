@@ -1,22 +1,11 @@
 import os, sys, json, math, random, time, shutil
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TORCHDYNAMO_DISABLE"]    = "1"
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
-
-
-def _load_dataset_ms(name, subset=None, split="train"):
-    try:
-        from modelscope.msdatasets import MsDataset
-        kwargs = {"split": split}
-        if subset:
-            kwargs["subset_name"] = subset
-        print(f"  Loading dataset {name} via ModelScope...", flush=True)
-        return MsDataset.load(name, **kwargs)
-    except Exception as e:
-        print(f"  ModelScope dataset failed ({e}), trying HF...", flush=True)
-        return load_dataset(name, subset, split=split)
 
 
 def _resolve_model_path(model_id, local_path):
@@ -49,14 +38,12 @@ DTYPE        = torch.bfloat16
 OUT_DIR      = "/root/autodl-tmp"
 N_GPUS       = torch.cuda.device_count()
 
-BATCH_SIZES_NEW_SCALE = [1, 2, 4, 8, 16, 32, 64]  # 32B, 72B: full sweep
-BATCH_SIZES_EXTEND    = [32, 64]                   # 14B: already have 1-16
+BATCH_SIZES = [1, 2, 4, 8, 16, 32, 64]
 
 MODELS = [
-    ("7B",  "Qwen/Qwen2.5-7B",  f"{OUT_DIR}/Qwen2.5-7B",  BATCH_SIZES_EXTEND),
-    ("14B", "Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B", BATCH_SIZES_EXTEND),
-    ("32B", "Qwen/Qwen2.5-32B", f"{OUT_DIR}/Qwen2.5-32B", BATCH_SIZES_NEW_SCALE),
-    ("72B", "Qwen/Qwen2.5-72B", f"{OUT_DIR}/Qwen2.5-72B", BATCH_SIZES_NEW_SCALE),
+    ("14B", "Qwen/Qwen2.5-14B", f"{OUT_DIR}/Qwen2.5-14B"),
+    ("32B", "Qwen/Qwen2.5-32B", f"{OUT_DIR}/Qwen2.5-32B"),
+    ("72B", "Qwen/Qwen2.5-72B", f"{OUT_DIR}/Qwen2.5-72B"),
 ]
 
 print(f"GPUs: {N_GPUS}", flush=True)
@@ -139,9 +126,9 @@ if tok.pad_token is None:
     tok.pad_token = tok.eos_token
 
 print("Loading datasets...", flush=True)
-ds_math = _load_dataset_ms("gsm8k", "main", split="train")
+ds_math = load_dataset("gsm8k", "main", split="train")
 math_texts = [f"Question: {r['question']}\nAnswer: {r['answer']}" for r in ds_math]
-ds_lit = _load_dataset_ms("wikitext", "wikitext-103-raw-v1", split="train")
+ds_lit = load_dataset("wikitext", "wikitext-103-raw-v1", split="train")
 lit_texts = [r["text"] for r in ds_lit if len(r["text"].strip()) > 80]
 print(f"  math: {len(math_texts)}  lit: {len(lit_texts)}", flush=True)
 
@@ -164,7 +151,7 @@ print(f"  math train: {len(math_train)}  eval: {len(math_eval)}  lit train: {len
 
 # ── Sweep loop ────────────────────────────────────────────────────────────────
 
-for size, hf_id, local_path, BATCH_SIZES in MODELS:
+for size, hf_id, local_path in MODELS:
     print(f"\n{'#'*60}", flush=True)
     print(f"  MODEL: {size}  ({hf_id})", flush=True)
     print(f"{'#'*60}", flush=True)
