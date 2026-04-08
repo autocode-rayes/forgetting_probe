@@ -114,31 +114,15 @@ def apply_sharding(model):
           flush=True)
 
 
-def _resolve_model_path(model_id):
-    """Download via ModelScope (faster, no firewall) and return local path.
-    Falls back to the HuggingFace model ID if modelscope is not installed."""
-    try:
-        from modelscope import snapshot_download
-        ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
-        print(f"  Downloading {ms_id} via ModelScope...", flush=True)
-        path = snapshot_download(ms_id)
-        print(f"  ModelScope path: {path}", flush=True)
-        return path
-    except Exception as e:
-        print(f"  ModelScope unavailable ({e}), using HF hub", flush=True)
-        return model_id
-
-
 def load_model(tokenizer):
     """
     Load model onto CPU (low_cpu_mem_usage avoids peak double-RAM),
     move to XLA lazily, annotate SPMD sharding, then materialise shards.
     Peak HBM per chip = model_size / num_chips + optimizer states / num_chips.
     """
-    model_path = _resolve_model_path(MODEL_ID)
     print(f"  Loading {MODEL_ID} on CPU (low_cpu_mem_usage=True)...", flush=True)
     model = AutoModelForCausalLM.from_pretrained(
-        model_path,
+        MODEL_ID,
         torch_dtype=DTYPE,
         low_cpu_mem_usage=True,
     )
@@ -307,7 +291,7 @@ def main():
               f"{list(results.keys())}", flush=True)
 
     print("\nLoading tokenizer...", flush=True)
-    tokenizer = AutoTokenizer.from_pretrained(_resolve_model_path(MODEL_ID))
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 

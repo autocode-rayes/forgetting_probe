@@ -27,7 +27,6 @@ pip3 install --upgrade --quiet \
     "datasets>=2.20" \
     "accelerate>=0.30" \
     "huggingface_hub>=0.24" \
-    "modelscope>=1.14" \
     "sentencepiece" \
     "protobuf"
 
