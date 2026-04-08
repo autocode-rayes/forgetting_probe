@@ -55,7 +55,7 @@ if _filter:
     MODEL_IDS = [m for m in MODEL_IDS if _filter in m]
     print(f"Model filter: {_filter} -> {MODEL_IDS}", flush=True)
 
-BATCH_SIZES  = [1, 2, 4, 8, 16, 32, 64]
+BATCH_SIZES  = [1, 2, 4, 8, 16]
 TOKEN_BUDGET = 50_000
 MAX_LEN      = 256
 TRAIN_N      = 175
