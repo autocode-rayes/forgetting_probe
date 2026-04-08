@@ -1,37 +1,25 @@
 import os, sys
+os.environ["HF_ENDPOINT"]="https://hf-mirror.com"
+os.environ["HF_HOME"]="/root/autodl-tmp/hf_cache"
 os.environ["TOKENIZERS_PARALLELISM"]="false"
 os.environ["TORCHDYNAMO_DISABLE"]="1"
 os.environ["TORCHINDUCTOR_COMPILE_THREADS"]="1"
+os.environ["TRANSFORMERS_OFFLINE"]="1"
 import json,math,random,time
 from itertools import permutations
 import torch
+import bitsandbytes as bnb
 from transformers import AutoModelForCausalLM,AutoTokenizer
 from datasets import load_dataset
 try:
     import torch._dynamo
     torch._dynamo.config.disable=True
 except:pass
-MODEL_ID=os.environ.get("MODEL_ID","Qwen/Qwen2.5-32B")
-OUT_DIR="/root/autodl-tmp"
-TOKEN_BUDGET=50000;MAX_LEN=256;TRAIN_N=175;EVAL_N=19;STEPS=200;BATCH=4;LR=2e-5;SEED=42
+MODEL_PATH="/root/autodl-tmp/Qwen2.5-32B"
+TOKEN_BUDGET=50000;MAX_LEN=256;TRAIN_N=175;EVAL_N=19;STEPS=200;BATCH=1;LR=2e-5;SEED=42
 DTYPE=torch.bfloat16;N_GPUS=torch.cuda.device_count();INPUT_DEV="cuda:0"
-MODEL_SLUG=MODEL_ID.split("/")[-1].lower()
-OUT=f"{OUT_DIR}/results_{MODEL_SLUG}.json";PREV=f"{OUT_DIR}/results_controlled.json"
+OUT="/root/autodl-tmp/results_32b.json";PREV="/root/autodl-tmp/results_14b.json"
 random.seed(SEED);torch.manual_seed(SEED)
-
-def _resolve_model_path(model_id):
-    try:
-        from modelscope import snapshot_download
-        ms_id=model_id.split("/")[0].lower()+"/"+model_id.split("/")[1]
-        print(f"Downloading {ms_id} via ModelScope...",flush=True)
-        path=snapshot_download(ms_id)
-        print(f"ModelScope path: {path}",flush=True)
-        return path
-    except Exception as e:
-        print(f"ModelScope unavailable ({e}), using HF hub",flush=True)
-        return model_id
-
-MODEL_PATH=_resolve_model_path(MODEL_ID)
 print(f"32B on {N_GPUS} GPUs  device_map=balanced",flush=True)
 def vram():return " | ".join(f"G{i}:{torch.cuda.memory_allocated(i)/1024**3:.1f}GB" for i in range(N_GPUS))
 def load_math():
@@ -69,7 +57,7 @@ def make_batches(chunks,shuffle=True):
     return[torch.stack(ch[i:i+BATCH]) for i in range(0,len(ch)-BATCH+1,BATCH)]
 def finetune(model,blist,label):
     model.train()
-    opt=torch.optim.AdamW(model.parameters(),lr=LR)
+    opt=bnb.optim.AdamW8bit(model.parameters(),lr=LR)
     step=total=0
     while step<STEPS:
         for b in blist:
@@ -91,7 +79,7 @@ def ppl(model,blist):
         if torch.isnan(out.loss):continue
         nll+=out.loss.item()*b.numel();ntok+=b.numel()
     return math.exp(nll/ntok) if ntok else float("inf")
-tok=AutoTokenizer.from_pretrained(MODEL_PATH)
+tok=AutoTokenizer.from_pretrained(MODEL_PATH,local_files_only=True)
 if tok.pad_token is None:tok.pad_token=tok.eos_token
 print("Loading datasets...",flush=True)
 raw={"math":load_math(),"code":load_code(),"literature":load_lit()}
@@ -105,13 +93,14 @@ for name,texts in raw.items():
 results={};t0=time.time()
 print(f"\n{'='*60}\nRunning 6 pairs [32B]\n{'='*60}",flush=True)
 for da,db in permutations(dom.keys(),2):
-    key=f"{da}→{db}"
+    key=f"{da}->{db}"
     print(f"\n[{key}]",flush=True)
     ta=make_batches(dom[da]["train"]);tb=make_batches(dom[db]["train"])
     ea=make_batches(dom[da]["eval"],shuffle=False)
     try:
-        model=AutoModelForCausalLM.from_pretrained(MODEL_PATH,dtype=DTYPE,device_map="balanced")
+        model=AutoModelForCausalLM.from_pretrained(MODEL_PATH,dtype=DTYPE,device_map="balanced",local_files_only=True)
         model.config.pad_token_id=tok.eos_token_id
+        model.gradient_checkpointing_enable()
         print(f"  loaded [{vram()}]",flush=True)
         finetune(model,ta,f"A={da}")
         pb=ppl(model,ea);print(f"  ppl({da}) before: {pb:.3f}",flush=True)
