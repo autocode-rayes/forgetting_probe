@@ -24,21 +24,19 @@ def _resolve_model_path(model_id, local_path):
             f.endswith(".safetensors") for f in os.listdir(local_path)):
         print(f"  Model at {local_path}", flush=True)
         return local_path
-    if os.environ.get("SKIP_MODELSCOPE", "0") == "0":
-        try:
-            from modelscope import snapshot_download
-            ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
-            print(f"  Downloading {ms_id} via ModelScope...", flush=True)
-            path = snapshot_download(ms_id, local_dir=local_path)
-            print(f"  Download complete -> {path}", flush=True)
-            return path
-        except Exception as e:
-            print(f"  ModelScope failed ({e}), trying HF hub...", flush=True)
-    print(f"  Downloading {model_id} via HF hub...", flush=True)
-    from huggingface_hub import snapshot_download as hf_dl
-    hf_dl(model_id, local_dir=local_path,
-          ignore_patterns=["*.msgpack", "*.h5", "flax*"])
-    return local_path
+    try:
+        from modelscope import snapshot_download
+        ms_id = model_id.split("/")[0].lower() + "/" + model_id.split("/")[1]
+        print(f"  Downloading {ms_id} via ModelScope...", flush=True)
+        path = snapshot_download(ms_id, local_dir=local_path)
+        print(f"  Download complete -> {path}", flush=True)
+        return path
+    except Exception as e:
+        print(f"  ModelScope failed ({e}), trying HF hub...", flush=True)
+        from huggingface_hub import snapshot_download as hf_dl
+        hf_dl(model_id, local_dir=local_path,
+              ignore_patterns=["*.msgpack", "*.h5", "flax*"])
+        return local_path
 
 TOKEN_BUDGET = 50_000
 MAX_LEN      = 256
@@ -196,9 +194,6 @@ for size, hf_id, local_path, BATCH_SIZES in MODELS:
             model = AutoModelForCausalLM.from_pretrained(
                 local_path, dtype=DTYPE, device_map="balanced", **fa2_kwargs)
             model.config.pad_token_id = tok.eos_token_id
-            if size in ("32B", "72B"):
-                model.gradient_checkpointing_enable()
-                print(f"  gradient_checkpointing enabled  [{vram()}]", flush=True)
             try:
                 model = torch.compile(model)
                 print(f"  torch.compile OK  [{vram()}]", flush=True)
